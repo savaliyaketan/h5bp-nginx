@@ -1,0 +1,83 @@
+# www to non-www redirect -- duplicate content is BAD:
+# https://github.com/h5bp/html5-boilerplate/blob/5370479476dceae7cc3ea105946536d6bc0ee468/.htaccess#L362
+# Choose between www and non-www, listen on the *wrong* one and redirect to
+# the right one -- http://wiki.nginx.org/Pitfalls#Server_Name
+server {
+  # don't forget to tell on which port this server listens
+  listen [::]:80;
+  listen 80;
+
+  # listen on the www host
+  server_name www.test.indiasomeday.com test.indiasomeday.com;
+
+  # and redirect to the non-www host (declared below)
+  return 301 https://test.indiasomeday.com$request_uri;
+}
+
+server {
+  # listen [::]:80 accept_filter=httpready; # for FreeBSD
+  # listen 80 accept_filter=httpready; # for FreeBSD
+  # listen [::]:80 deferred; # for Linux
+  # listen 80 deferred; # for Linux
+  listen [::]:443 ssl http2 deferred;
+  listen 443 ssl http2 deferred;
+
+  # The host name to respond to
+  server_name test.indiasomeday.com;
+
+  # Path for static files
+  root /home/deploy/testindiasomedaycom;
+  index index.html index.htm index.php;
+  ssl_certificate      /etc/letsencrypt/live/test.indiasomeday.com/fullchain.pem;
+  ssl_certificate_key  /etc/letsencrypt/live/test.indiasomeday.com/privkey.pem;
+
+# Improve HTTPS performance with session resumption
+  ssl_session_cache shared:SSL:10m;
+  ssl_session_timeout 5m;
+
+# Enable server-side protection against BEAST attacks 
+  ssl_prefer_server_ciphers on;
+  ssl_ciphers ECDH+AESGCM:ECDH+AES256:ECDH+AES128:DH+3DES:!ADH:!AECDH:!MD5;
+  ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+# Diffie-Hellman parameter for DHE ciphersuites
+# $ sudo openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
+  ssl_dhparam /etc/ssl/certs/dhparam.pem;
+  add_header Strict-Transport-Security "max-age=63072000; includeSubdomains";
+  ssl_stapling on;
+  ssl_stapling_verify on;
+  ssl_trusted_certificate /etc/letsencrypt/live/test.indiasomeday.com/fullchain.pem;
+  resolver 8.8.8.8 8.8.4.4 valid=300s;
+  resolver_timeout 5s;
+
+#location '/.well-known/acme-challenge' {
+#    default_type "text/plain";
+#    root /var/www/html;
+#}
+  # Specify a charset
+  charset utf-8;
+
+
+  # laravel settings start
+
+  location / {
+        try_files $uri $uri/ /index.php$is_args$args;
+   }
+
+  location = /favicon.ico { access_log off; log_not_found off; }
+  location = /robots.txt  { access_log off; log_not_found off; }
+
+  # laravel settings end 
+
+
+  #upload file size settings
+  client_max_body_size 100m;
+
+
+  # Custom 404 page
+  error_page 404 /404.html;
+
+  # Include the basic h5bp config set
+  include h5bp/basic.conf;
+
+  include h5bp/location/php72.conf;
+}
